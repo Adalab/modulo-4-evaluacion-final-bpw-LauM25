@@ -150,14 +150,54 @@ app.put("/api/libro/:id", async (req, res) => {
 });
 
 //Dejar a frontend que elimine un libro (probar en postman)
+
 app.delete("/api/libro/:id", async (req, res) => {
-    const connection = await getDBConnection(); //conectarme a la DB
-    const { id } = req.params; //Recoger el id que me envía frontend a través de url params
-    const sqlQuery = "DELETE FROM libros WHERE id = ?"; //Consulta a la base de datos con id dinámico (cogido de frontend)
-    const [result] = await connection.query(sqlQuery, [id]); //Ejecuto la query
-    connection.end(); //Cierro la conexión
-    res.status(200).json({
-        status: "sucsess",
-        massage: "Removed resource"
-    });
-})
+    const connection = await getDBConnection(); // Me conecto a la base de datos
+    const { id } = req.params; // Obtengo el id del libro que me manda el frontend a través de los parámetros de la URL
+
+    try {
+        // Intento ejecutar las operaciones que podrían fallar en este bloque
+
+        // 1. Antes de eliminar el libro, verifico si realmente existe en la base de datos
+        const checkQuery = "SELECT * FROM libros WHERE id = ?";
+        const [existingBook] = await connection.query(checkQuery, [id]);
+
+        // Si no encuentro el libro con ese id, respondo con un 404 (no encontrado)
+        if (existingBook.length === 0) { // Si no existe el libro
+            return res.status(404).json({
+                success: false,
+                message: "Book with the given id does not exist."
+            });
+        }
+
+        // 2. Si el libro existe, procedo a eliminarlo de la base de datos
+        const sqlQuery = "DELETE FROM libros WHERE id = ?";
+        const [result] = await connection.query(sqlQuery, [id]); // Ejecuto la consulta de eliminación
+
+        connection.end(); // Cierro la conexión con la base de datos
+
+        // 3. Verifico si la eliminación fue exitosa
+        if (result.affectedRows === 0) {
+            return res.status(404).json({
+                success: false,
+                message: "Failed to delete the book, try again."
+            });
+        }
+
+        // Si todo va bien, respondo con un mensaje de éxito
+        res.status(200).json({
+            success: true,
+            message: "Book successfully removed."
+        });
+
+    } catch (error) {
+        // Si ocurre cualquier error en el bloque try, este bloque catch lo captura
+        // Y gestiono el error, enviando una respuesta clara al cliente
+
+        console.error(error); // Imprimo el error en la consola para poder debuguear y ver qué ocurrió
+        res.status(500).json({
+            success: false,
+            message: "An error occurred while trying to delete the book."
+        });
+    }
+});
