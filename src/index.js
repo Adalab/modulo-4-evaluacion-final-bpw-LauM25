@@ -106,19 +106,48 @@ app.post("/api/libro", async (req, res) => {
 })
 
 //Actualizar (modificar) los libros a través del tipo put (probar en Postman)
-app.put("/api/libro/:id", async (req, res) => { //Se pone el id para que frontend me diga cual es el libro que se quiere manejar
-    const connection = await getDBConnection(); //Conectarme a la base de datos
-    const { id } = req.params; //Recojo el id del libro que quiere actualizar con url params
-    const { título, nombre, descripción } = req.body; //Recojo los nuevos datos del libro a través del body 
-    const sqlQuery = "UPDATE libros SET titulo = ?, nombre = ?, descripcion = ? WHERE id = ?;" //Consulto a la base de datos diciendole que las ? se rellenan desde lo que pongan en frontend (postman) pero ya poniendole los nombres reales de asignación que tienen en mySql
-    const [result] = await connection.query(sqlQuery, [título, nombre, descripción, id]) //Ejecutar pasandole los nombres inventados de la linea 91
-    //console.log(result); Lo utilicé para comprobarlo
-    connection.end(); //Cerrar la conexión
+app.put("/api/libro/:id", async (req, res) => {
+    const connection = await getDBConnection(); // Conectarme a la base de datos
+
+    if (!req.body) {
+        return res.status(400).json({
+            success: false,
+            message: "Provide the params"
+        });
+    }
+
+    const { id } = req.params; // Extraer el id desde los parámetros de la URL
+    const { título, nombre, descripción } = req.body; // Extraer los datos del libro del cuerpo de la solicitud
+
+    // Verificar que los parámetros necesarios estén presentes
+    if (!título || !nombre || !descripción) {
+        return res.status(400).json({
+            success: false,
+            message: "Bad params. Provide 'título', 'nombre', 'descripción'."
+        });
+    }
+
+    // Realizar la consulta para actualizar el libro
+    const sqlQuery = "UPDATE libros SET titulo = ?, nombre = ?, descripcion = ? WHERE id = ?;";
+    const [result] = await connection.query(sqlQuery, [título, nombre, descripción, id]);
+
+    connection.end(); // Cerrar la conexión con la base de datos
+
+    // Si no se actualizó ninguna fila, devolver un error
+    if (result.affectedRows === 0) { //He tenido que ponerle .affectedRows y no (!id) . Si intentamos usar id no obtendremos la información correcta porque id no es relevante en un UPDATE. En una actualización, no hay un nuevo ID generado. Lo que realmente nos interesa es saber cuántas filas se vieron afectadas, lo que se puede obtener con affectedRows.
+        return res.status(404).json({
+            success: false,
+            message: "The book with the given id does not exist."
+        });
+    }
+
+    // Responder con éxito si se actualizó el libro
     res.status(200).json({
-        sucess: true,
-        id: result.insertId // Respondo a Frontend 
+        success: true,
+        message: "Successfully modified book",
+        id: id // Devolver el id del libro modificado
     });
-})
+});
 
 //Dejar a frontend que elimine un libro (probar en postman)
 app.delete("/api/libro/:id", async (req, res) => {
