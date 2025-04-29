@@ -158,26 +158,26 @@ app.delete("/api/libro/:id", async (req, res) => {
     try {
         // Intento ejecutar las operaciones que podrían fallar en este bloque
 
-        // 1. Antes de eliminar el libro, verifico si realmente existe en la base de datos
+        // Antes de eliminar el libro, verifico si realmente existe en la base de datos
         const checkQuery = "SELECT * FROM libros WHERE id = ?";
         const [existingBook] = await connection.query(checkQuery, [id]);
 
         // Si no encuentro el libro con ese id, respondo con un 404 (no encontrado)
-        if (existingBook.length === 0) { // Si no existe el libro
+        if (existingBook.length === 0) { // Si no existe el libro. Es más seguro verificar cuántos resultados se han devuelto con .length, ya que si no hay coincidencias, no se obtiene ningún resultado.
             return res.status(404).json({
                 success: false,
                 message: "Book with the given id does not exist."
             });
         }
 
-        // 2. Si el libro existe, procedo a eliminarlo de la base de datos
+        // Si el libro existe, procedo a eliminarlo de la base de datos
         const sqlQuery = "DELETE FROM libros WHERE id = ?";
         const [result] = await connection.query(sqlQuery, [id]); // Ejecuto la consulta de eliminación
 
         connection.end(); // Cierro la conexión con la base de datos
 
-        // 3. Verifico si la eliminación fue exitosa
-        if (result.affectedRows === 0) {
+        // Verifico si la eliminación fue exitosa
+        if (result.affectedRows === 0) { //He tenido que ponerle .affectedRows y no (!id) . Si intentamos usar id no obtendremos la información correcta porque id no es relevante en un UPDATE. En una actualización, no hay un nuevo ID generado. Lo que realmente nos interesa es saber cuántas filas se vieron afectadas, lo que se puede obtener con affectedRows.
             return res.status(404).json({
                 success: false,
                 message: "Failed to delete the book, try again."
