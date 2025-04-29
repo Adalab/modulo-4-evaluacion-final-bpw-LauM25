@@ -71,17 +71,38 @@ app.get("/api/libro/:id", async (req, res) => {
 //Crear una nueva receta a través del tipo post (probar en postman)
 app.post("/api/libro", async (req, res) => {
     const connection = await getDBConnection(); // Conectarme con la base de datos
-    const { título, nombre, descripción } = req.body; //Recoger el libro  con especificaciones que me envía frontend a través de body params
-    const sqlQuery = "INSERT INTO libros (titulo, nombre, descripcion)  VALUES(?, ?, ?)"; //Añado el libro nuevo con INSERT INTO y pasandole los valores ? que hacen referencia a la linea de arriba título, nombre y descripción
-    const [result] = await connection.query(sqlQuery, [  //Ejecuto la query pasandole los nombres con los que se puede rellenar en frontend (Postman)
-        título,
-        nombre,
-        descripción
-    ])
-    res.status(201).json({ //Respondo a frontend con el estado 201 (indica que la solicitud ha sido un éxito y ha llevado a la creación de un nuevo recurso (libro))
-        succes: true,
-        id: result.insertId //añado el id que se ha creado automaticamente en Mysql
-    });
+
+    if (!req.body) {
+        res.status(404).json({
+            succes: false,
+            message: "Provide the params"
+        })
+    } else {
+        const { título, nombre, descripción } = req.body; //Recoger el libro  con especificaciones que me envía frontend a través de body params
+
+        if (!título || !nombre || !descripción) { //Bonus alertar al usuario de que ha escrito mal los parametros 
+            res.status(404).json({
+                success: false,
+                message: "Bad params. Provide 'título', 'nombre', 'descripción'."
+            })
+        } else {
+            const sqlQuery = "INSERT INTO libros (titulo, nombre, descripcion)  VALUES(?, ?, ?)"; //Añado el libro nuevo con INSERT INTO y pasandole los valores ? que hacen referencia a la linea de arriba título, nombre y descripción
+            const [result] = await connection.query(sqlQuery, [  //Ejecuto la query pasandole los nombres con los que se puede rellenar en frontend (Postman)
+                título,
+                nombre,
+                descripción
+            ])
+            connection.end(); // Cerrando conexión
+            res.status(201).json({ //Respondo a frontend con el estado 201 (indica que la solicitud ha sido un éxito y ha llevado a la creación de un nuevo recurso (libro))
+                succes: true,
+                id: result.insertId //añado el id que se ha creado automaticamente en Mysql
+            });
+        }
+    }
+
+
+
+
 })
 
 //Actualizar (modificar) los libros a través del tipo put (probar en Postman)
